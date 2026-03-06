@@ -2,22 +2,12 @@ const express = require("express");
 const app = express();
 app.use(express.json());
 
-// Department phone numbers
 const DEPARTMENTS = {
-  sales: "+447860377531",
-  lettings: "+447860377531",
-  property_management: "+447860377531",
-  accounts: "+447860377531",
-  tenancy_progression: "+447860377531"
-};
-
-// Caller IDs per department
-const CALLER_IDS = {
-  sales: "+447782357559",
-  lettings: "+442038550904",
-  property_management: "+447782357559",
-  accounts: "+447782357559",
-  tenancy_progression: "+447782357559"
+  sales: { number: "+447860377531", callerId: "+447782357559" },
+  lettings: { number: "+447860377531", callerId: "+442038550904" },
+  property_management: { number: "+447860377531", callerId: "+447782357559" },
+  accounts: { number: "+447860377531", callerId: "+447782357559" },
+  tenancy_progression: { number: "+447860377531", callerId: "+447782357559" }
 };
 
 app.post("/transfer", async (req, res) => {
@@ -26,15 +16,14 @@ app.post("/transfer", async (req, res) => {
     const toolCall = message.toolCallList[0];
     const department = toolCall.arguments.department;
     const controlUrl = call.monitor.controlUrl;
-    const destinationNumber = DEPARTMENTS[department];
-    const callerId = CALLER_IDS[department];
+    const dept = DEPARTMENTS[department];
 
-    // Immediately acknowledge the tool call so Sienna doesn't time out
+    // Respond to VAPI immediately so it doesn't timeout
     res.json({
       results: [{ toolCallId: toolCall.id, result: "transferring" }]
     });
 
-    // Initiate the transfer
+    // Initiate transfer after responding
     await fetch(controlUrl, {
       method: "POST",
       headers: {
@@ -45,13 +34,13 @@ app.post("/transfer", async (req, res) => {
         type: "transfer-call",
         destination: {
           type: "number",
-          number: destinationNumber,
-          callerId: callerId
+          number: dept.number,
+          callerId: dept.callerId
         }
       })
     });
 
-    // Wait 15 seconds then cancel if not answered
+    // Wait 15 seconds then cancel transfer
     setTimeout(async () => {
       try {
         await fetch(controlUrl, {
@@ -60,12 +49,10 @@ app.post("/transfer", async (req, res) => {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${process.env.VAPI_API_KEY}`
           },
-          body: JSON.stringify({
-            type: "end-call"
-          })
+          body: JSON.stringify({ type: "cancel-transfer" })
         });
       } catch (err) {
-        console.log("Cancel transfer error:", err.message);
+        console.log("Cancel error:", err.message);
       }
     }, 15000);
 
