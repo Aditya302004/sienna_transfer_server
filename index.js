@@ -12,18 +12,29 @@ const DEPARTMENTS = {
 
 app.post("/transfer", async (req, res) => {
   try {
-    const { call, message } = req.body;
-    const toolCall = message.toolCallList[0];
-    const department = toolCall.arguments.department;
-    const controlUrl = call.monitor.controlUrl;
+    console.log("Incoming request:", JSON.stringify(req.body, null, 2));
+    
+    const body = req.body;
+    const message = body.message;
+    const call = body.call;
+    
+    // Handle different VAPI request formats
+    const toolCall = message?.toolCallList?.[0] || message?.toolCalls?.[0];
+    const department = toolCall?.function?.arguments?.department || toolCall?.arguments?.department;
+    const controlUrl = call?.monitor?.controlUrl;
     const dept = DEPARTMENTS[department];
 
-    // Respond to VAPI immediately so it doesn't timeout
+    if (!dept || !controlUrl) {
+      console.log("Missing dept or controlUrl:", { department, controlUrl });
+      return res.json({ results: [{ toolCallId: toolCall?.id, result: "error" }] });
+    }
+
+    // Respond to VAPI immediately
     res.json({
       results: [{ toolCallId: toolCall.id, result: "transferring" }]
     });
 
-    // Initiate transfer after responding
+    // Initiate transfer
     await fetch(controlUrl, {
       method: "POST",
       headers: {
@@ -40,7 +51,7 @@ app.post("/transfer", async (req, res) => {
       })
     });
 
-    // Wait 15 seconds then cancel transfer
+    // Cancel after 15 seconds if not answered
     setTimeout(async () => {
       try {
         await fetch(controlUrl, {
