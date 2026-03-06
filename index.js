@@ -21,7 +21,8 @@ app.post("/transfer", async (req, res) => {
     // Handle different VAPI request formats
     const toolCall = message?.toolCallList?.[0] || message?.toolCalls?.[0];
     const department = toolCall?.function?.arguments?.department || toolCall?.arguments?.department;
-    const controlUrl = call?.monitor?.controlUrl;
+   const controlUrl = call?.monitor?.controlUrl || body?.call?.monitor?.controlUrl;
+console.log("Full call object:", JSON.stringify(call, null, 2));
     const dept = DEPARTMENTS[department];
 
     if (!dept || !controlUrl) {
