@@ -10,20 +10,28 @@ const DEPARTMENTS = {
   tenancy_progression: { number: "+447860377531", callerId: "+447782357559" }
 };
 
+function findControlUrl(obj, depth = 0) {
+  if (depth > 10 || !obj || typeof obj !== "object") return undefined;
+  if (obj.controlUrl) return obj.controlUrl;
+  for (const key of Object.keys(obj)) {
+    const result = findControlUrl(obj[key], depth + 1);
+    if (result) return result;
+  }
+  return undefined;
+}
+
 app.post("/transfer", async (req, res) => {
   try {
-    console.log("Full body:", JSON.stringify(req.body, null, 2));
-
     const body = req.body;
     const message = body.message;
-    const call = body.call || body;
 
     const toolCall = message?.toolCallList?.[0] || message?.toolCalls?.[0];
     const department = toolCall?.function?.arguments?.department || toolCall?.arguments?.department;
-    const controlUrl = call?.monitor?.controlUrl;
     const dept = DEPARTMENTS[department];
 
-    console.log("Extracted:", { department, controlUrl, deptFound: !!dept });
+    const controlUrl = findControlUrl(body);
+    console.log("Found controlUrl:", controlUrl);
+    console.log("Department:", department);
 
     if (!dept || !controlUrl) {
       console.log("Missing dept or controlUrl:", { department, controlUrl });
