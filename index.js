@@ -68,7 +68,7 @@ app.post("/transfer", async (req, res) => {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${process.env.VAPI_API_KEY}`
           },
-          body: JSON.stringify({ type: "cancel" })
+          body: JSON.stringify({ type: "hangup", leg: "destination" })
         });
         const cancelResult = await cancelResponse.text();
         console.log("Cancel response:", cancelResult);
