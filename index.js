@@ -28,8 +28,8 @@ app.post("/transfer", async (req, res) => {
     const toolCall = message?.toolCallList?.[0] || message?.toolCalls?.[0];
     const department = toolCall?.function?.arguments?.department || toolCall?.arguments?.department;
     const dept = DEPARTMENTS[department];
-
     const controlUrl = findControlUrl(body);
+
     console.log("Found controlUrl:", controlUrl);
     console.log("Department:", department);
 
@@ -42,32 +42,36 @@ app.post("/transfer", async (req, res) => {
       results: [{ toolCallId: toolCall.id, result: "transferring" }]
     });
 
-    await fetch(controlUrl, {
+    const transferResponse = await fetch(controlUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${process.env.VAPI_API_KEY}`
       },
       body: JSON.stringify({
-        type: "transfer-call",
+        type: "transfer",
         destination: {
           type: "number",
-          number: dept.number,
-          callerId: dept.callerId
+          number: dept.number
         }
       })
     });
 
+    const transferResult = await transferResponse.text();
+    console.log("Transfer response:", transferResult);
+
     setTimeout(async () => {
       try {
-        await fetch(controlUrl, {
+        const cancelResponse = await fetch(controlUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${process.env.VAPI_API_KEY}`
           },
-          body: JSON.stringify({ type: "cancel-transfer" })
+          body: JSON.stringify({ type: "cancel" })
         });
+        const cancelResult = await cancelResponse.text();
+        console.log("Cancel response:", cancelResult);
       } catch (err) {
         console.log("Cancel error:", err.message);
       }
