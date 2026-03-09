@@ -24,7 +24,6 @@ app.post("/transfer", async (req, res) => {
   try {
     const body = req.body;
     const message = body.message;
-
     const toolCall = message?.toolCallList?.[0] || message?.toolCalls?.[0];
     const department = toolCall?.function?.arguments?.department || toolCall?.arguments?.department;
     const dept = DEPARTMENTS[department];
@@ -38,10 +37,12 @@ app.post("/transfer", async (req, res) => {
       return res.json({ results: [{ toolCallId: toolCall?.id, result: "error" }] });
     }
 
+    // Respond to VAPI immediately
     res.json({
       results: [{ toolCallId: toolCall.id, result: "transferring" }]
     });
 
+    // Initiate warm transfer
     const transferResponse = await fetch(controlUrl, {
       method: "POST",
       headers: {
@@ -50,9 +51,12 @@ app.post("/transfer", async (req, res) => {
       },
       body: JSON.stringify({
         type: "transfer",
-        destination: {
-          type: "number",
-          number: dept.number
+        transferPlan: {
+          mode: "warm-transfer",
+          destination: {
+            type: "number",
+            number: dept.number
+          }
         }
       })
     });
@@ -60,7 +64,8 @@ app.post("/transfer", async (req, res) => {
     const transferResult = await transferResponse.text();
     console.log("Transfer response:", transferResult);
 
-    setTimeout(async () => {
+    // Start 15 second timer then cancel if not answered
+    const timer = setTimeout(async () => {
       try {
         const cancelResponse = await fetch(controlUrl, {
           method: "POST",
@@ -68,7 +73,12 @@ app.post("/transfer", async (req, res) => {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${process.env.VAPI_API_KEY}`
           },
-          body: JSON.stringify({ type: "hangup", leg: "destination" })
+          body: JSON.stringify({
+            type: "transfer",
+            transferPlan: {
+              mode: "cancel"
+            }
+          })
         });
         const cancelResult = await cancelResponse.text();
         console.log("Cancel response:", cancelResult);
