@@ -19,13 +19,22 @@ app.post("/transfer", async (req, res) => {
     const dept = DEPARTMENTS[department];
 
     console.log("Department:", department);
+    console.log("ToolCall ID:", toolCall?.id);
 
     if (!dept) {
       console.log("Missing department:", department);
       return res.json({ results: [{ toolCallId: toolCall?.id, result: "error" }] });
     }
 
-    const transferPayload = {
+    console.log("Sending warm transfer for department:", department);
+
+    res.json({
+      results: [
+        {
+          toolCallId: toolCall.id,
+          result: "transferring"
+        }
+      ],
       type: "transferCall",
       function: { name: "route_to_department" },
       destinations: [
@@ -63,10 +72,7 @@ app.post("/transfer", async (req, res) => {
           content: "I'm sorry about that, the team are unavailable at the moment. Would you like to leave your details and someone will call you back as soon as possible?"
         }
       ]
-    };
-
-    console.log("Sending warm transfer for department:", department);
-    res.json(transferPayload);
+    });
 
   } catch (err) {
     console.error("Error:", err);
