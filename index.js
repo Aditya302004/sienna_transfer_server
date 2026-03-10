@@ -42,7 +42,7 @@ app.post("/transfer", async (req, res) => {
       results: [{ toolCallId: toolCall.id, result: "transferring" }]
     });
 
-    // Initiate warm transfer
+    // Initiate transfer
     const transferResponse = await fetch(controlUrl, {
       method: "POST",
       headers: {
@@ -51,12 +51,9 @@ app.post("/transfer", async (req, res) => {
       },
       body: JSON.stringify({
         type: "transfer",
-        transferPlan: {
-          mode: "warm-transfer",
-          destination: {
-            type: "number",
-            number: dept.number
-          }
+        destination: {
+          type: "number",
+          number: dept.number
         }
       })
     });
@@ -65,8 +62,9 @@ app.post("/transfer", async (req, res) => {
     console.log("Transfer response:", transferResult);
 
     // Start 15 second timer then cancel if not answered
-    const timer = setTimeout(async () => {
+    setTimeout(async () => {
       try {
+        // Step 1 — cancel the transfer
         const cancelResponse = await fetch(controlUrl, {
           method: "POST",
           headers: {
@@ -74,14 +72,28 @@ app.post("/transfer", async (req, res) => {
             "Authorization": `Bearer ${process.env.VAPI_API_KEY}`
           },
           body: JSON.stringify({
-            type: "transfer",
-            transferPlan: {
-              mode: "cancel"
-            }
+            type: "cancel-transfer"
           })
         });
         const cancelResult = await cancelResponse.text();
         console.log("Cancel response:", cancelResult);
+
+        // Step 2 — Sienna speaks immediately after cancel
+        const sayResponse = await fetch(controlUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.VAPI_API_KEY}`
+          },
+          body: JSON.stringify({
+            type: "say",
+            content: "I'm sorry about that, the team are unavailable at the moment. Would you like to leave your details and someone will call you back as soon as possible?",
+            immediate: true
+          })
+        });
+        const sayResult = await sayResponse.text();
+        console.log("Say response:", sayResult);
+
       } catch (err) {
         console.log("Cancel error:", err.message);
       }
