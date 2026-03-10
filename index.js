@@ -27,7 +27,7 @@ app.post("/transfer", async (req, res) => {
 
     const transferPayload = {
       type: "transferCall",
-      function: { name: "departmentTransferAssistant" },
+      function: { name: "route_to_department" },
       destinations: [
         {
           type: "number",
